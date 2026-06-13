@@ -1,0 +1,11 @@
+services:
+  embedding-service:
+    build: ./embedding-service
+    ports: ["8000:8000"]
+    env_file: ./embedding-service/.env
+
+  api:
+    build: ./api
+    ports: ["8080:8080"]
+    env_file: ./api/.env
+    depends_on: [embedding-service]

@@ -1,0 +1,6 @@
+datasets>=2.19
+supabase>=2.5
+numpy>=1.26
+scikit-learn>=1.4
+python-dotenv>=1.0
+tqdm>=4.66
