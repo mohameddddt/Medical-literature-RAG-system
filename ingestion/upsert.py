@@ -18,5 +18,5 @@ def upsert_all(passages: list[dict], embeddings: list[list[float]]) -> None:
             }
             for p, emb in zip(batch_p, batch_e)
         ]
-        _client.table("documents").insert(rows).execute()
+        _client.table("documents").upsert(rows, on_conflict="pubid,content_hash").execute()
         print(f"  Upserted rows {i + 1}–{i + len(batch_p)}")

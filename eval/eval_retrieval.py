@@ -7,6 +7,7 @@ Usage:
 """
 
 import os
+import time
 import requests
 from datasets import load_dataset
 from supabase import create_client
@@ -23,22 +24,45 @@ HF_TOKEN = os.getenv("HF_TOKEN")
 _client = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
 
+def _with_retries(fn, attempts: int = 4, base_delay: float = 1.0):
+    """Retry transient network failures with exponential backoff.
+
+    A full run makes thousands of sequential calls, so a single dropped
+    connection would otherwise discard the whole evaluation.
+    """
+    for attempt in range(attempts):
+        try:
+            return fn()
+        except Exception as e:
+            if attempt == attempts - 1:
+                raise
+            delay = base_delay * (2**attempt)
+            print(f"\n  transient error ({type(e).__name__}), retrying in {delay:.0f}s...")
+            time.sleep(delay)
+
+
 def _embed_query(text: str) -> list[float]:
-    resp = requests.post(
-        f"{EMBEDDING_SERVICE_URL}/embed",
-        json={"texts": [text], "kind": "query"},
-        timeout=30,
-    )
-    resp.raise_for_status()
-    return resp.json()["embeddings"][0]
+    def call():
+        resp = requests.post(
+            f"{EMBEDDING_SERVICE_URL}/embed",
+            json={"texts": [text], "kind": "query"},
+            timeout=30,
+        )
+        resp.raise_for_status()
+        return resp.json()["embeddings"][0]
+
+    return _with_retries(call)
 
 
 def _retrieve(embedding: list[float], k: int) -> list[str]:
-    result = _client.rpc(
-        "match_documents",
-        {"query_embedding": embedding, "match_count": k},
-    ).execute()
-    return [r["pubid"] for r in result.data]
+    def call():
+        result = _client.rpc(
+            "match_documents",
+            {"query_embedding": embedding, "match_count": k},
+        ).execute()
+        return [r["pubid"] for r in result.data]
+
+    return _with_retries(call)
 
 
 def recall_at_k(dataset, k: int = 5) -> float:

@@ -18,4 +18,25 @@ describe('prompt', () => {
     assert.ok(ctx.includes('11111'));
     assert.ok(ctx.includes('22222'));
   });
+
+  it('omits the verdict instruction by default', () => {
+    assert.ok(!buildSystemPrompt().includes('ANSWER: yes'));
+    assert.ok(!buildSystemPrompt({ requireVerdict: false }).includes('ANSWER: yes'));
+  });
+
+  it('adds the verdict instruction when requested', () => {
+    const prompt = buildSystemPrompt({ requireVerdict: true });
+    assert.ok(prompt.includes('ANSWER: yes'));
+    assert.ok(prompt.includes('ANSWER: maybe'));
+  });
+
+  it('keeps the citation and disclaimer rules in both modes', () => {
+    for (const prompt of [
+      buildSystemPrompt(),
+      buildSystemPrompt({ requireVerdict: true }),
+    ]) {
+      assert.ok(prompt.includes('Cite every claim'));
+      assert.ok(prompt.includes('not medical advice'));
+    }
+  });
 });

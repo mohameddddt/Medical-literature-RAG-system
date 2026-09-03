@@ -12,6 +12,10 @@ app.use(express.json());
 
 const QuerySchema = z.object({
   question: z.string().min(1).max(1000),
+  // Opt-in: prefixes the answer with an "ANSWER: yes|no|maybe" line so the
+  // evaluation harness can score deterministically. Off by default, so the
+  // app's output is unchanged.
+  verdict: z.boolean().optional().default(false),
 });
 
 app.post('/api/query', async (req, res) => {
@@ -20,11 +24,13 @@ app.post('/api/query', async (req, res) => {
     return res.status(400).json({ error: parsed.error.flatten() });
   }
 
-  const { question } = parsed.data;
+  const { question, verdict } = parsed.data;
   try {
     const embedding = await embedQuery(question);
     const passages = await retrievePassages(embedding);
-    const answer = await generateAnswer(question, passages);
+    const answer = await generateAnswer(question, passages, {
+      requireVerdict: verdict,
+    });
     const sources = passages.map((p) => ({
       pubid: p.pubid,
       similarity: p.similarity,
