@@ -25,7 +25,7 @@ app/build/
 
 # Data & model caches
 data/
-models/
+/models/
 *.parquet
 .cache/
 
